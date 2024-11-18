@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import traceback
@@ -267,6 +268,13 @@ class Message(Data):
         instance.messages = instance.prompt.get("kwargs", {}).get("messages", [])
         return instance
 
+    @classmethod
+    async def create(cls, **kwargs):
+        def _create():
+            return cls(**kwargs)
+
+        return await asyncio.to_thread(_create)
+
 
 class DefaultModel(BaseModel):
     class Config:
@@ -338,6 +346,13 @@ class MessageResponse(DefaultModel):
             timestamp=message.timestamp,
             flow_id=flow_id,
         )
+
+    @classmethod
+    async def create(cls, **kwargs):
+        """If files are present, create the message in a separate thread as is_image_file is blocking."""
+        if "files" in kwargs:
+            return await asyncio.to_thread(cls, **kwargs)
+        return cls(**kwargs)
 
 
 class ErrorMessage(Message):
