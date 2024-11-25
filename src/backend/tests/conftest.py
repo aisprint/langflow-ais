@@ -54,9 +54,6 @@ def blockbuster():
             "io.TextIOWrapper.write",
         ]:
             bb.functions[func].can_block_functions.append(("settings/service.py", {"initialize"}))
-        for func in bb.functions:
-            if func.startswith("sqlite3."):
-                bb.functions[func].deactivate()
         yield bb
 
 
