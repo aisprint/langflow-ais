@@ -2,7 +2,8 @@ import { countHandlesFn } from "@/CustomNodes/helpers/count-handles";
 import { mutateTemplate } from "@/CustomNodes/helpers/mutate-template";
 import useHandleOnNewValue from "@/CustomNodes/hooks/use-handle-new-value";
 import useHandleNodeClass from "@/CustomNodes/hooks/use-handle-node-class";
-import ToggleShadComponent from "@/components/parameterRenderComponent/components/toggleShadComponent";
+import ShadTooltip from "@/components/common/shadTooltipComponent";
+import ToggleShadComponent from "@/components/core/parameterRenderComponent/components/toggleShadComponent";
 import { Button } from "@/components/ui/button";
 import { usePostTemplateValue } from "@/controllers/API/queries/nodes/use-post-template-value";
 import { usePostRetrieveVertexOrder } from "@/controllers/API/queries/vertex";
@@ -12,8 +13,7 @@ import { APIClassType } from "@/types/api";
 import _, { cloneDeep } from "lodash";
 import { useEffect, useRef, useState } from "react";
 import { useUpdateNodeInternals } from "reactflow";
-import IconComponent from "../../../../components/genericIconComponent";
-import ShadTooltip from "../../../../components/shadTooltipComponent";
+import IconComponent from "../../../../components/common/genericIconComponent";
 import {
   Select,
   SelectContentWithoutPortal,
@@ -85,7 +85,7 @@ export default function NodeToolbarComponent({
       data.node!,
       handleNodeClass,
       postToolModeValue,
-      setNoticeData,
+      setErrorData,
       "tool_mode",
     );
     updateNodeInternals(data.id);
@@ -189,6 +189,7 @@ export default function NodeToolbarComponent({
     ungroup: handleungroup,
     minimizeFunction: minimize,
     activateToolMode: activateToolMode,
+    hasToolMode,
   });
 
   const paste = useFlowStore((state) => state.paste);
@@ -222,6 +223,7 @@ export default function NodeToolbarComponent({
 
   const setSuccessData = useAlertStore((state) => state.setSuccessData);
   const setNoticeData = useAlertStore((state) => state.setNoticeData);
+  const setErrorData = useAlertStore((state) => state.setErrorData);
 
   useEffect(() => {
     setFlowComponent(createFlowComponent(cloneDeep(data), version));
@@ -789,6 +791,7 @@ export default function NodeToolbarComponent({
                 }}
                 nodeClass={data.node}
                 value={data.node?.template[name].value ?? ""}
+                componentId={data.id}
               >
                 <></>
               </CodeAreaModal>
