@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from langchain_core.tools import StructuredTool
 from openai import OpenAI
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from langflow.base.langchain_utilities.model import LCToolComponent
 from langflow.field_typing import Tool
