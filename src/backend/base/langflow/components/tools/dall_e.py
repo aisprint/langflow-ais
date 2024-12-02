@@ -74,14 +74,17 @@ class DallEWrapper(BaseModel):
                 else:
                     result = image_data.b64_json
             elif self.result_format in ["file", "url"] and hasattr(image_data, "url"):
+                # noqa: SIM108 - Keeping consistent structure with the block above which is too long for a ternary
                 if self.result_format == "url":
                     result = image_data.url
                 else:
                     result = str(self._download(image_data.url))
             else:
-                raise ValueError("Unexpected image format in response data.")
+                msg = "Unexpected image format in response data."
+                raise ValueError(msg)
         else:
-            raise ValueError("No response from OpenAI DALL-E API.")
+            msg = "No response from OpenAI DALL-E API."
+            raise ValueError(msg)
 
         return {
             "result": result,
@@ -196,8 +199,8 @@ class DallEComponent(LCToolComponent):
         )
 
         tool = StructuredTool.from_function(
-            name=to_pythonic_variable_name(self.name),
-            description=self.description,
+            name=to_pythonic_variable_name(self.effective_display_name),
+            description=self.effective_description,
             func=wrapper.run,
             args_schema=DallESchema,
         )
