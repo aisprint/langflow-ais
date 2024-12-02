@@ -74,7 +74,6 @@ class DallEWrapper(BaseModel):
                 else:
                     result = image_data.b64_json
             elif self.result_format in ["file", "url"] and hasattr(image_data, "url"):
-                # noqa: SIM108 - Keeping consistent structure with the block above which is too long for a ternary
                 if self.result_format == "url":
                     result = image_data.url
                 else:
