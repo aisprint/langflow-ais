@@ -74,7 +74,7 @@ class DallEWrapper(BaseModel):
                 else:
                     result = image_data.b64_json
             elif self.result_format in ["file", "url"] and hasattr(image_data, "url"):
-                if self.result_format == "url": # noqa: SIM108
+                if self.result_format == "url":  # noqa: SIM108
                     result = image_data.url
                 else:
                     result = str(self._download(image_data.url))
