@@ -19,6 +19,7 @@ import { cn, getNumberFromString } from "@/utils/utils";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import useDescriptionModal from "../../oldComponents/componentsComponent/hooks/use-description-modal";
+import useDuplicateFlows from "../../oldComponents/componentsComponent/hooks/use-handle-duplicate";
 import { useGetTemplateStyle } from "../../utils/get-template-style";
 import { timeElapsed } from "../../utils/time-elapse";
 import DropdownComponent from "../dropdown";
@@ -50,6 +51,16 @@ const GridComponent = ({ flowData }: { flowData: FlowType }) => {
     const { inputs, outputs } = getInputsAndOutputs(flow?.data?.nodes ?? []);
     return inputs.length > 0 || outputs.length > 0;
   }
+
+  const { handleDuplicate } = useDuplicateFlows(
+    [flowData.id],
+    [flowData],
+    () => {},
+    setSuccessData,
+    () => {},
+    () => {},
+    isComponent ? "Component" : "Flow",
+  );
 
   /* const handlePlaygroundClick = () => {
     track("Playground Button Clicked", { flowId: flowData.id });
@@ -158,6 +169,7 @@ const GridComponent = ({ flowData }: { flowData: FlowType }) => {
                 <DropdownComponent
                   flowData={flowData}
                   setOpenDelete={setOpenDelete}
+                  handleDuplicate={handleDuplicate}
                 />
               </DropdownMenuContent>
             </DropdownMenu>

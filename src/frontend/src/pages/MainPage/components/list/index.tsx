@@ -18,6 +18,7 @@ import { cn, getNumberFromString } from "@/utils/utils";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import useDescriptionModal from "../../oldComponents/componentsComponent/hooks/use-description-modal";
+import useDuplicateFlows from "../../oldComponents/componentsComponent/hooks/use-handle-duplicate";
 import { useGetTemplateStyle } from "../../utils/get-template-style";
 import { timeElapsed } from "../../utils/time-elapse";
 import DropdownComponent from "../dropdown";
@@ -93,6 +94,16 @@ const ListComponent = ({ flowData }: { flowData: FlowType }) => {
         });
       });
   };
+
+  const { handleDuplicate } = useDuplicateFlows(
+    [flowData.id],
+    [flowData],
+    () => {},
+    setSuccessData,
+    () => {},
+    () => {},
+    isComponent ? "Component" : "Flow",
+  );
 
   const { onDragStart } = useDragStart(flowData);
 
@@ -197,6 +208,7 @@ const ListComponent = ({ flowData }: { flowData: FlowType }) => {
                 handlePlaygroundClick={() => {
                   // handlePlaygroundClick();
                 }}
+                handleDuplicate={handleDuplicate}
               />
             </DropdownMenuContent>
           </DropdownMenu>
