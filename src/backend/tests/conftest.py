@@ -49,6 +49,11 @@ def blockbuster():
     with blockbuster_ctx() as bb:
         for func in [
             "io.BufferedReader.read",
+            "io.TextIOWrapper.read",
+        ]:
+            bb.functions[func].can_block_functions.append(("aiofile/version.py", {"<module>"}))
+        for func in [
+            "io.BufferedReader.read",
             "io.BufferedWriter.write",
             "io.TextIOWrapper.read",
             "io.TextIOWrapper.write",
