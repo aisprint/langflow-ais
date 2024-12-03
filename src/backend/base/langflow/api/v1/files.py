@@ -6,15 +6,20 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 from langflow.api.utils import AsyncDbSession, CurrentActiveUser
 from langflow.api.v1.schemas import UploadFileResponse
+from langflow.graph.schema import ResultData, RunOutputs
+from langflow.services.auth.utils import api_key_security
 from langflow.services.database.models.flow import Flow
+from langflow.services.database.models.user.model import UserRead
 from langflow.services.deps import get_storage_service
 from langflow.services.storage.service import StorageService
 from langflow.services.storage.utils import build_content_type_from_extension
+
+from .endpoints import RunResponse, SimplifiedAPIRequest, simplified_run_flow
 
 router = APIRouter(tags=["Files"], prefix="/files")
 
@@ -26,7 +31,7 @@ async def get_flow_id(
     flow_id: UUID,
     current_user: CurrentActiveUser,
     session: AsyncDbSession,
-):
+) -> str:
     flow_id_str = str(flow_id)
     # AttributeError: 'SelectOfScalar' object has no attribute 'first'
     flow = await session.get(Flow, flow_id_str)
@@ -46,25 +51,89 @@ async def upload_file(
     session: AsyncDbSession,
     storage_service: Annotated[StorageService, Depends(get_storage_service)],
 ) -> UploadFileResponse:
+    """Handles file uploads to a specific flow."""
     try:
-        flow_id_str = str(flow_id)
-        flow = await session.get(Flow, flow_id_str)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        flow_id_str = await get_flow_id(flow_id=flow_id, current_user=current_user, session=session)
 
-    if flow.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You don't have access to this flow")
-
-    try:
         file_content = await file.read()
         timestamp = datetime.now(tz=timezone.utc).astimezone().strftime("%Y-%m-%d_%H-%M-%S")
         file_name = file.filename or hashlib.sha256(file_content).hexdigest()
         full_file_name = f"{timestamp}_{file_name}"
         folder = flow_id_str
         await storage_service.save_file(flow_id=folder, file_name=full_file_name, data=file_content)
-        return UploadFileResponse(flow_id=flow_id_str, file_path=f"{folder}/{full_file_name}")
+        try:
+            file_path = storage_service.build_full_path(folder, full_file_name)
+        except NotImplementedError:
+            # Fall back to prior behaviour
+            file_path = f"{folder}/{full_file_name}"
+
+        return UploadFileResponse(flow_id=flow_id_str, file_path=file_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/upload/run/{flow_id}", status_code=HTTPStatus.CREATED)
+async def upload_and_run_file(
+    *,
+    file: UploadFile,
+    flow_id: Annotated[UUID, Depends(get_flow_id)],
+    current_user: CurrentActiveUser,
+    session: AsyncDbSession,
+    storage_service: Annotated[StorageService, Depends(get_storage_service)],
+    input_request: SimplifiedAPIRequest | None = None,
+    api_key_user: Annotated[UserRead, Depends(api_key_security)],
+    file_path_field: str = Query("input_value"),
+    input_type: str = Query("text"),
+    output_type: str = Query("text"),
+    stream: bool = Query(default=False),
+    background_tasks: BackgroundTasks,
+    request: Request,
+) -> RunResponse:
+    try:
+        flow_id_str = await get_flow_id(flow_id=flow_id, current_user=current_user, session=session)
+        flow = await session.get(Flow, flow_id_str)
+
+        upload_response = await upload_file(
+            file=file,
+            flow_id=flow_id_str,
+            current_user=current_user,
+            session=session,
+            storage_service=storage_service,
+        )
+
+        if not hasattr(upload_response, "file_path") or not upload_response.file_path:
+            raise HTTPException(status_code=500, detail="Invalid upload response")
+
+        full_path = str(upload_response.file_path)
+
+        if not input_request:
+            input_request = SimplifiedAPIRequest(
+                input_value=full_path,
+                input_type=input_type,
+                output_type=output_type,
+            )
+        else:
+            input_request.set_value_by_path(file_path_field, full_path)
+
+        run_response = await simplified_run_flow(
+            background_tasks=background_tasks,
+            flow=flow,
+            input_request=input_request,
+            stream=stream,
+            api_key_user=api_key_user,
+        )
+
+        upload_result = ResultData(
+            results=upload_response,
+            component_display_name=request.url.path,
+            component_id="upload_file",
+        )
+        run_response.outputs.append(RunOutputs(inputs={}, outputs=[upload_result]))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    else:
+        return run_response
 
 
 @router.get("/download/{flow_id}/{file_name}")
